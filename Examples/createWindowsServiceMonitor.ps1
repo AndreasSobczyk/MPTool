@@ -1,4 +1,4 @@
-﻿<#PSScriptInfo
+<#PSScriptInfo
 
 .VERSION 1.0
 
@@ -54,7 +54,9 @@
 
  .Example
   # Create a new management pack CM.MyService.ServiceMonitoring for the class discovery and monitor to monitor the service "MyService"
-  .\WindowsServiceMonitor.ps1 -ManagementServerFQDN "SCOM01.cloudmechanic.net" `    -ManagementPackName "CM.MyService.ServiceMonitoring" `    -CreateMP $true `	
+  .\WindowsServiceMonitor.ps1 -ManagementServerFQDN "SCOM01.cloudmechanic.net" `
+    -ManagementPackName "CM.MyService.ServiceMonitoring" `
+    -CreateMP $true `	
     -ServiceDisplayName "My Precious Service" `
     -ServiceName "MyService" `
     -UnhealthyState Error
@@ -75,7 +77,7 @@ $ErrorActionPreference = "Stop"
 $ManagementPackDisplayName  = $ManagementPackName.Replace("."," ")
 $ManagementPackDescription = "$ManagementPackDisplayName  - Created with SCOMMPTools"
 
-$ClassName = "CM.$ServiceName.Windows.Service"
+$ClassName = "CM.$ServiceName.Windows.Service".Replace(" ",".")
 $ClassDisplayName = "CM $ServiceDisplayName Windows Service"
 $ClassDescription = "CM $ServiceDisplayName Windows Service  - Created with SCOMMPTools"
 
@@ -83,11 +85,15 @@ $DiscoveryName = "$ClassName.Discovery"
 $RegistryPath = "SYSTEM\CurrentControlSet\Services\$ServiceName\"
 
 if($CreateMP -eq $true){
-    New-MPToolManagementPack -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -ManagementPackDisplayName $ManagementPackDisplayName -ManagementPackDescription $ManagementPackDescription
+    $MP = Get-SCOMManagementPack -Name $ManagementPackName
+    if($mp -eq $null){
+        New-MPToolManagementPack -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -ManagementPackDisplayName $ManagementPackDisplayName -ManagementPackDescription $ManagementPackDescription
+    }
 }
 
 New-MPToolLocalApplicationClass -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -ClassName $ClassName -ClassDisplayName $ClassDisplayName -ClassDescription $ClassDescription
 
-New-MPToolFilteredRegistryDiscovery -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -DiscoveryName $DiscoveryName -TargetClassName "Microsoft.Windows.Computer" -RegistryPath $RegistryPath -DiscoveryClassName $ClassName  -IntervalSeconds 300
+New-MPToolFilteredRegistryDiscovery -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -DiscoveryName $DiscoveryName -TargetClassName "Microsoft.Windows.Computer" -RegistryPath $RegistryPath -DiscoveryClassName $ClassName  -IntervalSeconds 300 -Enabled $true
 
-New-MPToolWindowsServiceMonitor -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -TargetClassName $ClassName -UnhealthyState $UnhealthyState -ServiceName $ServiceName
+sleep 30
+New-MPToolWindowsServiceMonitor -ManagementServerFQDN $ManagementServerFQDN -ManagementPackName $ManagementPackName -TargetClassName $ClassName -UnhealthyState $UnhealthyState -ServiceName $ServiceName -MonitorName "$ClassName.Monitor"
